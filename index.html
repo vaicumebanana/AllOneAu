@@ -40,7 +40,7 @@
             padding: 15px 25px;
             border-radius: 0.75rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
+            z-index: 10000; /* Super alto para garantir que esteja na frente */
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
             pointer-events: none; /* Permite cliques quando escondido */
@@ -59,7 +59,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 999;
+            z-index: 9999; /* Alto, mas abaixo do message-box */
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
@@ -113,7 +113,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1002; /* Acima de tudo */
+            z-index: 10001; /* Acima de tudo, inclusive message-box */
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
@@ -225,16 +225,16 @@
 
     <!-- Bibliotecas Firebase -->
     <script type="module">
-        // Importa as funções necessárias dos SDKs Firebase (versão 12.1.0)
+        // Importa as funções necessárias dos SDKs Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, query, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-        // APP_ID FIXO - AGORA COM O VALOR DO SEU NOVO FIREBASE APP_ID
-        const appId = "1:1055585794088:web:0c7eab96a4e696cd6f9d1d"; 
-
+        // APP_ID e Configuração Firebase DIRETO NO CÓDIGO (para máxima confiabilidade)
+        // Estes valores foram extraídos de suas configurações anteriores e são específicos do seu projeto 'isiskd'.
+        const appId = "1:1055585794088:web:0c7eab96a4e696cd6f9d1d";
         const firebaseConfig = {
-            apiKey: "AIzaSyCov5xP4aFRo3QPFCxCRQGN7X59dR9ZLF4",
+            apiKey: "AIzaSyCov5xP4aFRo3QPFCxCRQGN7X59dR9ZLF4", 
             authDomain: "isiskd.firebaseapp.com",
             projectId: "isiskd",
             storageBucket: "isiskd.firebasestorage.app",
@@ -242,12 +242,16 @@
             appId: "1:1055585794088:web:0c7eab96a4e696cd6f9d1d",
             measurementId: "G-5S8S16K6KF"
         };
+        // O token inicial do Canvas ainda pode ser usado se disponível para login personalizado
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Inicializa o Firebase
+        console.log("KEY GEN APP: Inicializando Firebase com config:", firebaseConfig);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        console.log("KEY GEN APP: Firebase App, Auth e DB inicializados.");
+
 
         let userId = null;
         let isAuthReady = false;
@@ -494,7 +498,7 @@
             userIdDisplay.textContent = userId;
             isAuthReady = true;
             console.log("KEY GEN APP: Firebase Auth Pronto. ID do Usuário:", userId);
-            console.log("KEY GEN APP: App ID em uso (FIXO):", appId);
+            console.log("KEY GEN APP: App ID em uso:", appId);
             
             if (isAuthReady) {
                 loadAccessKeys(); // Carrega as chaves ao iniciar
