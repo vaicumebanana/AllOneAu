@@ -86,10 +86,19 @@
         <h1 class="text-4xl font-bold text-center text-gray-800 mb-4">🔑 Gerador de Chaves de Acesso</h1>
         <p class="text-center text-gray-600 mb-6">Seu ID de Usuário (para referência): <span id="user-id" class="font-mono text-blue-700 break-all">Carregando...</span></p>
 
-        <!-- Entrada da Duração da Validade da Chave -->
+        <!-- Entrada da Duração da Validade da Chave com seletor de unidade -->
         <div class="flex flex-col gap-2">
-            <label for="validity-input" class="text-lg font-semibold text-gray-700">Validade da Chave (em horas):</label>
-            <input type="number" id="validity-input" value="24" min="1" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-800 shadow-sm">
+            <label for="validity-value" class="text-lg font-semibold text-gray-700">Validade da Chave:</label>
+            <div class="flex gap-2">
+                <input type="number" id="validity-value" value="24" min="1" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-800 shadow-sm">
+                <select id="validity-unit" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-800 shadow-sm">
+                    <option value="minutes">Minutos</option>
+                    <option value="hours" selected>Horas</option>
+                    <option value="days">Dias</option>
+                    <option value="months">Meses</option>
+                    <option value="years">Anos</option>
+                </select>
+            </div>
         </div>
 
         <!-- Botão de Ação -->
@@ -148,6 +157,8 @@
         let isAuthReady = false;
 
         const userIdDisplay = document.getElementById('user-id');
+        const validityValueInput = document.getElementById('validity-value');
+        const validityUnitSelect = document.getElementById('validity-unit');
         const generatedKeyArea = document.getElementById('generated-key-area');
         const expirationInfo = document.getElementById('expiration-info');
         const generateButton = document.getElementById('generate-button');
@@ -212,9 +223,11 @@
                 return;
             }
 
-            const validityHours = parseInt(document.getElementById('validity-input').value, 10);
-            if (isNaN(validityHours) || validityHours <= 0) {
-                showMessage("Por favor, insira um número de horas válido para a validade.", 'error');
+            const validityValue = parseInt(validityValueInput.value, 10);
+            const validityUnit = validityUnitSelect.value;
+
+            if (isNaN(validityValue) || validityValue <= 0) {
+                showMessage("Por favor, insira um valor numérico válido para a validade.", 'error');
                 return;
             }
 
@@ -223,10 +236,32 @@
             expirationInfo.textContent = 'Validade: Gerando...'; // Atualiza informação de validade
 
             try {
-                // Gera uma chave única
                 const newKey = crypto.randomUUID();
                 const createdAt = Date.now();
-                const expiresAt = createdAt + (validityHours * 60 * 60 * 1000); // Converte horas para milissegundos
+                let expiresAt;
+
+                // Calcula expiresAt com base na unidade selecionada
+                switch (validityUnit) {
+                    case 'minutes':
+                        expiresAt = createdAt + (validityValue * 60 * 1000);
+                        break;
+                    case 'hours':
+                        expiresAt = createdAt + (validityValue * 60 * 60 * 1000);
+                        break;
+                    case 'days':
+                        expiresAt = createdAt + (validityValue * 24 * 60 * 60 * 1000);
+                        break;
+                    case 'months': // Aproximadamente 30 dias
+                        expiresAt = createdAt + (validityValue * 30 * 24 * 60 * 60 * 1000);
+                        break;
+                    case 'years': // Aproximadamente 365 dias
+                        expiresAt = createdAt + (validityValue * 365 * 24 * 60 * 60 * 1000);
+                        break;
+                    default:
+                        expiresAt = createdAt + (24 * 60 * 60 * 1000); // Padrão: 24 horas
+                        showMessage("Unidade de validade inválida, usando padrão de 24 horas.", 'info');
+                }
+                console.log(`KEY GEN APP: Gerando chave. Valor: ${validityValue}, Unidade: ${validityUnit}, Expira em MS: ${expiresAt}`);
 
                 // Armazena a chave no Firestore na coleção PÚBLICA
                 const keyDocRef = doc(db, `/artifacts/${appId}/public/data/accessKeys`, newKey);
@@ -234,7 +269,8 @@
                     key: newKey,
                     createdAt: createdAt,
                     expiresAt: expiresAt, // Isso será salvo como um NUMBER no Firestore
-                    validityHours: validityHours,
+                    validityValue: validityValue, // Salva o valor original
+                    validityUnit: validityUnit,   // Salva a unidade original
                     status: 'active',
                     generatedByUserId: userId // Armazena o usuário que a gerou para auditoria
                 };
@@ -243,7 +279,7 @@
 
 
                 generatedKeyArea.value = newKey; // Define a chave gerada aqui
-                const expirationDate = new Date(expiresAt).toLocaleString();
+                const expirationDate = new Date(expiresAt).toLocaleString('pt-BR');
                 expirationInfo.textContent = `Válido até: ${expirationDate}`;
                 showMessage("Chave gerada e salva com sucesso!", 'success');
                 console.log("KEY GEN APP: Chave gerada e exibida:", newKey, "Expira:", new Date(expiresAt));
