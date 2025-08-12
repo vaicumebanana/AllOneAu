@@ -1,0 +1,179 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Chaves de Acesso Firebase</title>
+    <!-- Tailwind CSS CDN para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem; /* Adicionado padding para telas menores */
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 28rem;
+            text-align: center;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .message-box {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1.5rem;
+            word-wrap: break-word; /* Garante que IDs longos quebrem a linha */
+            text-align: left;
+        }
+        .message-box strong {
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Gerador de Chaves de Acesso</h1>
+        
+        <div class="mb-4">
+            <label for="expirationDays" class="block text-gray-700 text-sm font-semibold mb-2 text-left">
+                Duração da Chave (dias):
+            </label>
+            <input type="number" id="expirationDays" value="7" min="1" class="input-field" placeholder="Ex: 7">
+        </div>
+
+        <button id="generateKeyBtn" class="btn-primary">Gerar Chave de Acesso</button>
+
+        <div id="message" class="message-box hidden"></div>
+    </div>
+
+    <!-- SDKs do Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuração do Firebase
+        // O __firebase_config e __initial_auth_token são fornecidos pelo ambiente Canvas.
+        // Se estiver rodando fora do Canvas, você precisará defini-los.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyAGE6USqp6YwLpGinnMqZD_eO_gF7m9TRw",
+            authDomain: "alloneai-d6ba6.firebaseapp.com",
+            databaseURL: "https://alloneai-d6ba6-default-rtdb.firebaseio.com",
+            projectId: "alloneai-d6ba6",
+            storageBucket: "alloneai-d6ba6.firebasestorage.app",
+            messagingSenderId: "695268266235",
+            appId: "1:695268266235:web:b8c9a1b96efbfa180e205e",
+            measurementId: "G-P4XBLRYG5Y"
+        };
+        
+        // Inicializa o Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Obtém o ID do aplicativo fornecido pelo ambiente Canvas ou usa um padrão
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const generateKeyBtn = document.getElementById('generateKeyBtn');
+        const expirationDaysInput = document.getElementById('expirationDays');
+        const messageDiv = document.getElementById('message');
+
+        // Função para exibir mensagens na interface do usuário
+        function showMessage(text, isError = false) {
+            messageDiv.innerHTML = text; // Usar innerHTML para tags HTML como <strong> e <br>
+            messageDiv.classList.remove('hidden');
+            if (isError) {
+                messageDiv.style.backgroundColor = '#fee2e2';
+                messageDiv.style.color = '#991b1b';
+            } else {
+                messageDiv.style.backgroundColor = '#e0f2fe';
+                messageDiv.style.color = '#0c4a6e';
+            }
+        }
+
+        // Autentica anonimamente ou com token personalizado, se disponível
+        async function authenticateAndGenerateKey() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                const userId = auth.currentUser?.uid || crypto.randomUUID();
+
+                generateKeyBtn.onclick = async () => {
+                    try {
+                        const days = parseInt(expirationDaysInput.value, 10);
+                        if (isNaN(days) || days <= 0) {
+                            showMessage("Por favor, insira um número válido de dias.", true);
+                            return;
+                        }
+
+                        const expirationDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000); 
+                        
+                        const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/access_keys`), {
+                            userId: userId,
+                            expiration: expirationDate.getTime(),
+                            createdAt: Date.now()
+                        });
+
+                        showMessage(`
+                            <strong>Chave de Acesso Gerada!</strong><br><br>
+                            <strong>ID do Usuário (Chave):</strong> ${userId}<br>
+                            <strong>ID do Documento da Chave (opcional para busca):</strong> ${docRef.id}<br>
+                            <strong>Expira em:</strong> ${expirationDate.toLocaleString()}
+                            <br><br>
+                            Copie o <strong>ID do Usuário</strong> acima e use-o no aplicativo de chat.
+                        `);
+
+                    } catch (error) {
+                        console.error("Erro ao gerar chave de acesso:", error);
+                        showMessage(`Erro ao gerar chave de acesso: ${error.message}`, true);
+                    }
+                };
+            } catch (error) {
+                console.error("Erro na autenticação Firebase:", error);
+                showMessage(`Erro na autenticação Firebase: ${error.message}. Verifique a configuração do Firebase.`, true);
+                generateKeyBtn.disabled = true;
+            }
+        }
+
+        authenticateAndGenerateKey();
+    </script>
+</body>
+</html>
