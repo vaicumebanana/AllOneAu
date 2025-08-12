@@ -1,179 +1,285 @@
- <!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Chaves de Acesso Firebase</title>
-    <!-- Tailwind CSS CDN para estilização -->
+    <title>Gerador de Chaves de Acesso</title>
+    <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f2f5;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Alinha ao topo */
             min-height: 100vh;
-            margin: 0;
-            padding: 1rem; /* Adicionado padding para telas menores */
+            padding: 2rem;
             box-sizing: border-box;
         }
         .container {
             background-color: #ffffff;
+            border-radius: 1.5rem; /* Mais cantos arredondados */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
             padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 28rem;
-            text-align: center;
-        }
-        .input-field {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            box-sizing: border-box;
-            font-size: 1rem;
-        }
-        .btn-primary {
-            background-color: #4f46e5;
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 0.5rem;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .btn-primary:hover {
-            background-color: #4338ca;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
         .message-box {
-            background-color: #e0f2fe;
-            color: #0c4a6e;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1.5rem;
-            word-wrap: break-word; /* Garante que IDs longos quebrem a linha */
-            text-align: left;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none; /* Permite cliques quando escondido */
         }
-        .message-box strong {
-            color: #1e40af;
+        .message-box.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .loading-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
+<body class="selection:bg-blue-200">
     <div class="container">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">Gerador de Chaves de Acesso</h1>
-        
-        <div class="mb-4">
-            <label for="expirationDays" class="block text-gray-700 text-sm font-semibold mb-2 text-left">
-                Duração da Chave (dias):
-            </label>
-            <input type="number" id="expirationDays" value="7" min="1" class="input-field" placeholder="Ex: 7">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-4">🔑 Gerador de Chaves de Acesso</h1>
+        <p class="text-center text-gray-600 mb-6">Seu ID de Usuário (para referência): <span id="user-id" class="font-mono text-blue-700 break-all">Carregando...</span></p>
+
+        <!-- Entrada da Duração da Validade da Chave -->
+        <div class="flex flex-col gap-2">
+            <label for="validity-input" class="text-lg font-semibold text-gray-700">Validade da Chave (em horas):</label>
+            <input type="number" id="validity-input" value="24" min="1" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-800 shadow-sm">
         </div>
 
-        <button id="generateKeyBtn" class="btn-primary">Gerar Chave de Acesso</button>
+        <!-- Botão de Ação -->
+        <button id="generate-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
+            Gerar Nova Chave
+        </button>
 
-        <div id="message" class="message-box hidden"></div>
+        <!-- Exibição da Chave Gerada -->
+        <div class="flex flex-col gap-2 mt-4">
+            <h2 class="text-2xl font-bold text-gray-800">Chave Gerada:</h2>
+            <textarea id="generated-key-area" rows="4" readonly class="p-4 bg-gray-100 border border-gray-200 rounded-lg min-h-[100px] text-gray-700 leading-relaxed overflow-auto shadow-inner select-all" placeholder="Sua chave de acesso aparecerá aqui."></textarea>
+            <p id="expiration-info" class="text-sm text-gray-600">Validade: N/A</p>
+        </div>
+
+        <!-- Botão de Copiar -->
+        <button id="copy-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+            Copiar Chave
+        </button>
     </div>
 
-    <!-- SDKs do Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- Caixa de Mensagem para alertas -->
+    <div id="message-box" class="message-box"></div>
 
-        // Configuração do Firebase
-        // O __firebase_config e __initial_auth_token são fornecidos pelo ambiente Canvas.
-        // Se estiver rodando fora do Canvas, você precisará defini-los.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyAGE6USqp6YwLpGinnMqZD_eO_gF7m9TRw",
-            authDomain: "alloneai-d6ba6.firebaseapp.com",
-            databaseURL: "https://alloneai-d6ba6-default-rtdb.firebaseio.com",
-            projectId: "alloneai-d6ba6",
-            storageBucket: "alloneai-d6ba6.firebasestorage.app",
-            messagingSenderId: "695268266235",
-            appId: "1:695268266235:web:b8c9a1b96efbfa180e205e",
-            measurementId: "G-P4XBLRYG5Y"
+    <!-- Sobreposição de Carregamento -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Bibliotecas Firebase -->
+    <script type="module">
+        // Importa as funções necessárias dos SDKs Firebase (versão 12.1.0)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+        // APP_ID FIXO - AGORA COM O VALOR DO SEU NOVO FIREBASE APP_ID
+        const appId = "1:1055585794088:web:0c7eab96a4e696cd6f9d1d"; 
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCov5xP4aFRo3QPFCxCRQGN7X59dR9ZLF4",
+            authDomain: "isiskd.firebaseapp.com",
+            projectId: "isiskd",
+            storageBucket: "isiskd.firebasestorage.app",
+            messagingSenderId: "1055585794088",
+            appId: "1:1055585794088:web:0c7eab96a4e696cd6f9d1d",
+            measurementId: "G-5S8S16K6KF"
         };
-        
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
         // Inicializa o Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Obtém o ID do aplicativo fornecido pelo ambiente Canvas ou usa um padrão
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let userId = null;
+        let isAuthReady = false;
 
-        const generateKeyBtn = document.getElementById('generateKeyBtn');
-        const expirationDaysInput = document.getElementById('expirationDays');
-        const messageDiv = document.getElementById('message');
+        const userIdDisplay = document.getElementById('user-id');
+        const generatedKeyArea = document.getElementById('generated-key-area');
+        const expirationInfo = document.getElementById('expiration-info');
+        const generateButton = document.getElementById('generate-button');
+        const copyButton = document.getElementById('copy-button');
 
-        // Função para exibir mensagens na interface do usuário
-        function showMessage(text, isError = false) {
-            messageDiv.innerHTML = text; // Usar innerHTML para tags HTML como <strong> e <br>
-            messageDiv.classList.remove('hidden');
-            if (isError) {
-                messageDiv.style.backgroundColor = '#fee2e2';
-                messageDiv.style.color = '#991b1b';
+        // Função para exibir caixa de mensagem personalizada
+        function showMessage(message, type = 'info') {
+            const messageBox = document.getElementById('message-box');
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Reseta classes e mostra
+            if (type === 'error') {
+                messageBox.style.backgroundColor = '#dc2626'; // Vermelho
+            } else if (type === 'success') {
+                messageBox.style.backgroundColor = '#16a34a'; // Verde
             } else {
-                messageDiv.style.backgroundColor = '#e0f2fe';
-                messageDiv.style.color = '#0c4a6e';
+                messageBox.style.backgroundColor = '#333'; // Cinza escuro padrão
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+
+        // Função para mostrar/esconder sobreposição de carregamento
+        function toggleLoading(show) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (show) {
+                loadingOverlay.classList.add('show');
+            } else {
+                loadingOverlay.classList.remove('show');
             }
         }
 
-        // Autentica anonimamente ou com token personalizado, se disponível
-        async function authenticateAndGenerateKey() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                const userId = auth.currentUser?.uid || crypto.randomUUID();
-
-                generateKeyBtn.onclick = async () => {
-                    try {
-                        const days = parseInt(expirationDaysInput.value, 10);
-                        if (isNaN(days) || days <= 0) {
-                            showMessage("Por favor, insira um número válido de dias.", true);
-                            return;
-                        }
-
-                        const expirationDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000); 
-                        
-                        const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/access_keys`), {
-                            userId: userId,
-                            expiration: expirationDate.getTime(),
-                            createdAt: Date.now()
-                        });
-
-                        showMessage(`
-                            <strong>Chave de Acesso Gerada!</strong><br><br>
-                            <strong>ID do Usuário (Chave):</strong> ${userId}<br>
-                            <strong>ID do Documento da Chave (opcional para busca):</strong> ${docRef.id}<br>
-                            <strong>Expira em:</strong> ${expirationDate.toLocaleString()}
-                            <br><br>
-                            Copie o <strong>ID do Usuário</strong> acima e use-o no aplicativo de chat.
-                        `);
-
-                    } catch (error) {
-                        console.error("Erro ao gerar chave de acesso:", error);
-                        showMessage(`Erro ao gerar chave de acesso: ${error.message}`, true);
+        // Autentica com Firebase
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                try {
+                    // Tenta fazer login com token personalizado se disponível
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("KEY GEN APP: Firebase: Login com token personalizado.");
+                    } else {
+                        // Caso contrário, faz login anonimamente
+                        await signInAnonymously(auth);
+                        console.log("KEY GEN APP: Firebase: Login anônimo.");
                     }
-                };
-            } catch (error) {
-                console.error("Erro na autenticação Firebase:", error);
-                showMessage(`Erro na autenticação Firebase: ${error.message}. Verifique a configuração do Firebase.`, true);
-                generateKeyBtn.disabled = true;
+                } catch (error) {
+                    console.error("KEY GEN APP: Firebase Auth Error:", error);
+                    showMessage(`Erro de autenticação Firebase: ${error.message}`, 'error');
+                }
             }
-        }
+            userId = auth.currentUser?.uid || crypto.randomUUID(); // Usa auth.currentUser.uid se disponível, caso contrário um UUID aleatório
+            userIdDisplay.textContent = userId;
+            isAuthReady = true;
+            console.log("KEY GEN APP: Firebase Auth Pronto. ID do Usuário:", userId);
+            console.log("KEY GEN APP: App ID em uso (FIXO):", appId); // Loga o appId fixo
+        });
 
-        authenticateAndGenerateKey();
+        // Listener de Eventos para gerar a chave
+        generateButton.addEventListener('click', async () => {
+            if (!isAuthReady) {
+                showMessage("Autenticando com Firebase, por favor, aguarde...", 'info');
+                return;
+            }
+
+            const validityHours = parseInt(document.getElementById('validity-input').value, 10);
+            if (isNaN(validityHours) || validityHours <= 0) {
+                showMessage("Por favor, insira um número de horas válido para a validade.", 'error');
+                return;
+            }
+
+            toggleLoading(true);
+            generatedKeyArea.value = ''; // Limpa chave anterior
+            expirationInfo.textContent = 'Validade: Gerando...'; // Atualiza informação de validade
+
+            try {
+                // Gera uma chave única
+                const newKey = crypto.randomUUID();
+                const createdAt = Date.now();
+                const expiresAt = createdAt + (validityHours * 60 * 60 * 1000); // Converte horas para milissegundos
+
+                // Armazena a chave no Firestore na coleção PÚBLICA
+                const keyDocRef = doc(db, `/artifacts/${appId}/public/data/accessKeys`, newKey);
+                const keyDataToSave = {
+                    key: newKey,
+                    createdAt: createdAt,
+                    expiresAt: expiresAt, // Isso será salvo como um NUMBER no Firestore
+                    validityHours: validityHours,
+                    status: 'active',
+                    generatedByUserId: userId // Armazena o usuário que a gerou para auditoria
+                };
+                await setDoc(keyDocRef, keyDataToSave);
+                console.log("KEY GEN APP: Chave salva no Firestore. Dados:", keyDataToSave);
+
+
+                generatedKeyArea.value = newKey; // Define a chave gerada aqui
+                const expirationDate = new Date(expiresAt).toLocaleString();
+                expirationInfo.textContent = `Válido até: ${expirationDate}`;
+                showMessage("Chave gerada e salva com sucesso!", 'success');
+                console.log("KEY GEN APP: Chave gerada e exibida:", newKey, "Expira:", new Date(expiresAt));
+
+            } catch (error) {
+                console.error("KEY GEN APP: Erro ao gerar ou salvar chave:", error);
+                generatedKeyArea.value = "Erro ao gerar chave.";
+                expirationInfo.textContent = 'Validade: Erro';
+                showMessage(`Erro ao gerar ou salvar chave: ${error.message}`, 'error');
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // Listener de Eventos para copiar a chave para a área de transferência
+        copyButton.addEventListener('click', () => {
+            const keyToCopy = generatedKeyArea.value;
+            if (keyToCopy && keyToCopy !== "Erro ao gerar chave." && keyToCopy !== "Sua chave de acesso aparecerá aqui.") { // Evita copiar placeholder/erro
+                // Usa document.execCommand para operações de área de transferência em ambientes iframe
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = keyToCopy;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    showMessage("Chave copiada para a área de transferência!", 'success');
+                } catch (err) {
+                    console.error('KEY GEN APP: Falha ao copiar texto: ', err);
+                    showMessage("Erro ao copiar a chave.", 'error');
+                } finally {
+                    document.body.removeChild(tempTextArea);
+                }
+            } else {
+                showMessage("Não há chave válida para copiar.", 'info');
+            }
+        });
     </script>
 </body>
 </html>
